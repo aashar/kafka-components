@@ -7,7 +7,6 @@ import quickfix.FileStoreFactory;
 import quickfix.LogFactory;
 import quickfix.MessageFactory;
 import quickfix.MessageStoreFactory;
-import quickfix.RuntimeError;
 import quickfix.ScreenLogFactory;
 import quickfix.SessionID;
 import quickfix.SessionSettings;
@@ -21,7 +20,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import static quickfix.Acceptor.SETTING_ACCEPTOR_TEMPLATE;
 import static quickfix.Acceptor.SETTING_SOCKET_ACCEPT_ADDRESS;
 import static quickfix.Acceptor.SETTING_SOCKET_ACCEPT_PORT;
@@ -90,9 +88,12 @@ public class FixDriver {
                 && settings.getBool(sessionID, SETTING_ACCEPTOR_TEMPLATE);
     }
 
-    public void start(BlockingQueue<String> events) throws RuntimeError, ConfigError {
-    	engine.setQueue(events);
+    public void start() throws ConfigError {
         acceptor.start();
+    }
+    
+    public List<String> poll() throws InterruptedException {
+    	return engine.poll();
     }
 
     public void stop() {

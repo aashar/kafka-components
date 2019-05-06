@@ -6,9 +6,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -27,8 +24,6 @@ public class FixReceiverSourceTask extends SourceTask {
     private FixDriver engine;
     private String topic = null;
     
-    private BlockingQueue<String> events = new LinkedBlockingQueue<String>();
-
     private Long streamOffset;
 
     @Override
@@ -38,6 +33,7 @@ public class FixReceiverSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> props) {
+        log.trace("Starting");
         filename = props.get(FixReceiverSourceConnector.CONFIG_FILE);
         topic = props.get(FixReceiverSourceConnector.TOPIC_CONFIG);
         InputStream inputStream;
@@ -47,26 +43,22 @@ public class FixReceiverSourceTask extends SourceTask {
 	        inputStream.close();
 
 	        engine = new FixDriver(settings);
-	        engine.start(events);
+	        engine.start();
 		} catch (Exception e) {
 			log.error("Error starting FIX Engine", e);
 		}
-		log.debug("Topic:" + topic);
     }
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-		log.debug("Topic:" + topic);
-        ArrayList<SourceRecord> records = null;
+        ArrayList<SourceRecord> records = new ArrayList<>();
 
-        while (!events.isEmpty()) {
-            String line = events.take();
-            log.trace("Read a line {}", line);
-            if (records == null)
-                records = new ArrayList<>();
+        List<String> lines = engine.poll();
+        lines.forEach(l -> {
+            log.trace("Got a message {}", l);
             records.add(new SourceRecord(offsetKey(filename), offsetValue(streamOffset), topic, null,
-                    null, null, VALUE_SCHEMA, line, System.currentTimeMillis()));
-        }
+                    null, null, VALUE_SCHEMA, l, System.currentTimeMillis()));
+        });
 
         return records;
     }
